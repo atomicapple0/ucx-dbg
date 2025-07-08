@@ -13,6 +13,22 @@
 #include <cuda.h>
 #include <nvml.h>
 
+// export LD_LIBRARY_PATH=/home/ubuntu/ucx-install/lib:/home/ubuntu/ucx-install/lib/ucx:$LD_LIBRARY_PATH
+// CUDA_VISIBLE_DEVICES=0 UCX_TLS=cuda_ipc,cuda_copy,tcp ucx_perftest -t tag_bw -m cuda -s 10000000 -n 10 -p 9999 -c 0
+// CUDA_VISIBLE_DEVICES=1 UCX_TLS=cuda_ipc,cuda_copy,tcp ucx_perftest `hostname` -t tag_bw -m cuda -s 100000000 -n 10 -p 9999 -c 1
+
+
+#define ANSI_COLOR_MAGENTA "\x1b[34m"
+#define ANSI_COLOR_RESET "\x1b[0m"
+#define PERR(x, y, a, b)                                                                 \
+    printf("%s[%s:%d] %s%s%s%d%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, x, #y, a, b, ANSI_COLOR_RESET)
+#define DBGS(x) \
+    printf("%s[%s:%d] %s = %s%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, x, ANSI_COLOR_RESET)
+#define DBG(x) \
+    printf("%s[%s:%d] %s = %d%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, (int)x, ANSI_COLOR_RESET)
+#define DBGX(x) \
+    printf("%s[%s:%d] %s = %p%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, (void*)x, ANSI_COLOR_RESET)
+
 
 const char *uct_cuda_base_cu_get_error_string(CUresult result);
 
@@ -24,13 +40,15 @@ const char *uct_cuda_base_cu_get_error_string(CUresult result);
             nvmlReturn_t _err = (_func); \
             if (NVML_SUCCESS != _err) { \
                 ucs_log((_log_level), "%s failed: %s", \
-                        UCS_PP_MAKE_STRING(_func), \
-                        (NVML_ERROR_DRIVER_NOT_LOADED != _err) ? \
-                                nvmlErrorString(_err) : \
-                                "nvml is a stub library"); \
+                UCS_PP_MAKE_STRING(_func), \
+                (NVML_ERROR_DRIVER_NOT_LOADED != _err) ? \
+                nvmlErrorString(_err) : \
+                "nvml is a stub library"); \
                 _status = UCS_ERR_IO_ERROR; \
             } \
         } while (0); \
+        PERR("UCT_NVML_FUNC: ", _func, "->", (int)_status); \
+        fflush(stdout); \
         _status; \
     })
 
@@ -47,14 +65,15 @@ const char *uct_cuda_base_cu_get_error_string(CUresult result);
                 _status = UCS_INPROGRESS; \
             } else if (CUDA_SUCCESS != _result) { \
                 ucs_log((_log_level), "%s failed: %s", \
-                        UCS_PP_MAKE_STRING(_func), \
-                        uct_cuda_base_cu_get_error_string(_result)); \
+                UCS_PP_MAKE_STRING(_func), \
+                uct_cuda_base_cu_get_error_string(_result)); \
                 _status = UCS_ERR_IO_ERROR; \
             } \
         } while (0); \
+        PERR("UCT_CUDADRV_FUNC: ", _func, "->", (int)_status); \
+        fflush(stdout); \
         _status; \
     })
-
 
 #define UCT_CUDADRV_FUNC_LOG_ERR(_func) \
     UCT_CUDADRV_FUNC(_func, UCS_LOG_LEVEL_ERROR)

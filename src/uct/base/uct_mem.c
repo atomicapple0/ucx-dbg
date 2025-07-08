@@ -15,6 +15,16 @@
 #include <ucs/profile/profile.h>
 #include <ucs/sys/ptr_arith.h>
 
+#define ANSI_COLOR_MAGENTA "\x1b[34m"
+#define ANSI_COLOR_RESET "\x1b[0m"
+#define PERR(x, y, a, b)                                                                 \
+    printf("%s[%s:%d] %s%s%s%d%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, x, #y, a, b, ANSI_COLOR_RESET)
+#define DBGS(x) \
+    printf("%s[%s:%d] %s = %s%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, x, ANSI_COLOR_RESET)
+#define DBG(x) \
+    printf("%s[%s:%d] %s = %d%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, (int)x, ANSI_COLOR_RESET)
+#define DBGX(x) \
+    printf("%s[%s:%d] %s = %p%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, (void*)x, ANSI_COLOR_RESET)
 
 typedef struct {
     uct_alloc_method_t method;
@@ -109,17 +119,24 @@ ucs_status_t uct_mem_alloc(size_t length, const uct_alloc_method_t *methods,
               ucs_memory_type_names[mem_type], alloc_length, flags);
     ucs_log_indent(1);
 
+    DBG(num_methods);
     for (method = methods; method < methods + num_methods; ++method) {
+        DBG(*method);
+        DBGS(uct_alloc_method_names[*method]);
         ucs_trace("trying allocation method %s", uct_alloc_method_names[*method]);
 
         switch (*method) {
         case UCT_ALLOC_METHOD_MD:
+            DBGS("UCT_ALLOC_METHOD_MD");
             if (!(params->field_mask & UCT_MEM_ALLOC_PARAM_FIELD_MDS)) {
                 break;
             }
 
             /* Allocate with one of the specified memory domains */
+            DBG(params->mds.count);
             for (md_index = 0; md_index < params->mds.count; ++md_index) {
+                DBG(md_index);
+
                 alloc_length = length;
                 address      = uct_mem_alloc_params_get_address(params);
                 md           = params->mds.mds[md_index];
@@ -131,6 +148,7 @@ ucs_status_t uct_mem_alloc(size_t length, const uct_alloc_method_t *methods,
 
                 /* Check if MD supports allocation */
                 if (!(md_attr.cap.flags & UCT_MD_FLAG_ALLOC)) {
+                    DBGS("MD does not support allocation");
                     continue;
                 }
 
@@ -138,11 +156,13 @@ ucs_status_t uct_mem_alloc(size_t length, const uct_alloc_method_t *methods,
                  * if it's requested */
                 if ((flags & UCT_MD_MEM_FLAG_FIXED) &&
                     !(md_attr.cap.flags & UCT_MD_FLAG_FIXED)) {
+                    DBGS("MD does not support fixed address allocation");
                     continue;
                 }
 
                 /* Check if MD supports allocation on requested mem_type */
                 if (!(md_attr.cap.alloc_mem_types & UCS_BIT(mem_type))) {
+                    DBGS("MD does not support allocation on requested mem_type");
                     continue;
                 }
 
@@ -151,10 +171,12 @@ ucs_status_t uct_mem_alloc(size_t length, const uct_alloc_method_t *methods,
                  * fall-back, because this MD already exposed support for memory
                  * allocation.
                  */
+                DBGS("uct_md_mem_alloc");
                 status = uct_md_mem_alloc(md, &alloc_length, &address,
                                           mem_type, flags, alloc_name,
                                           &memh);
                 if (status != UCS_OK) {
+                    DBGS("failed to allocate");
                     ucs_log(log_level,
                             "failed to allocate %zu bytes using md %s for %s: %s",
                             alloc_length, md->component->name, alloc_name,
@@ -173,6 +195,7 @@ ucs_status_t uct_mem_alloc(size_t length, const uct_alloc_method_t *methods,
                 /* assumes that only MDs are capable of allocating non-host
                  * memory
                  */
+                DBGS("assumes that only MDs are capable of allocating non-host memory");
                 ucs_trace("unable to allocate requested memory type");
                 status = UCS_ERR_UNSUPPORTED;
                 goto out;
@@ -302,6 +325,8 @@ allocated_without_md:
     mem->mem_type = UCS_MEMORY_TYPE_HOST;
     mem->memh     = UCT_MEM_HANDLE_NULL;
 allocated:
+    DBGX(mem->md);
+    // DBGS(mem->md->component->name);
     ucs_trace("allocated %zu bytes at %p using %s", alloc_length, address,
               (mem->md == NULL) ? uct_alloc_method_names[*method]
                                 : mem->md->component->name);

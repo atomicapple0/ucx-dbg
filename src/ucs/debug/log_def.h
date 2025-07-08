@@ -22,8 +22,8 @@ BEGIN_C_DECLS
 /** @file log_def.h */
 
 #define ucs_log_component_is_enabled(_level, _comp_log_config) \
-    ucs_unlikely(((_level) <= UCS_MAX_LOG_LEVEL) && \
-                 ((_level) <= (((ucs_log_component_config_t*)(_comp_log_config))->log_level)))
+    (ucs_unlikely(((_level) <= UCS_MAX_LOG_LEVEL) && \
+                 ((_level) <= (((ucs_log_component_config_t*)(_comp_log_config))->log_level))) || 0)
 
 #define ucs_log_is_enabled(_level) \
     ucs_log_component_is_enabled(_level, &ucs_global_opts.log_component)

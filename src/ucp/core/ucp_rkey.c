@@ -469,7 +469,7 @@ static ucp_md_map_t ucp_rkey_find_global_id_md_map(ucp_context_h context,
 }
 
 static void
-ucp_memh_exported_tl_mkey_data_unpack(ucp_context_h context, 
+ucp_memh_exported_tl_mkey_data_unpack(ucp_context_h context,
                                       const void **start_p,
                                       const void **tl_mkey_buf_p,
                                       ucp_md_map_t *md_map_p)
@@ -885,7 +885,7 @@ UCS_PROFILE_FUNC(ucs_status_t, ucp_ep_rkey_unpack_internal,
         status = uct_rkey_unpack(tl_rkey->cmpt, tl_rkey_buf, &tl_rkey->rkey);
         if (status == UCS_OK) {
             ucs_trace("rkey[%d] for remote md %d is 0x%lx", rkey_index,
-                      remote_md_index, tl_rkey->rkey.rkey);
+                remote_md_index, tl_rkey->rkey.rkey);
             ++rkey_index;
         } else if (status == UCS_ERR_UNREACHABLE) {
             rkey->md_map       &= ~UCS_BIT(remote_md_index);

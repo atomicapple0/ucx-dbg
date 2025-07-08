@@ -195,6 +195,8 @@ static int uct_cuda_ipc_get_device_nvlinks(int ordinal)
     nvmlPciInfo_t pci;
     ucs_status_t status;
 
+    DBG(ordinal);
+
     if (num_nvlinks != -1) {
         return num_nvlinks;
     }
@@ -219,10 +221,17 @@ static int uct_cuda_ipc_get_device_nvlinks(int ordinal)
 
     /* not enough to check number of nvlinks; need to check if links are active
      * by seeing if remote info can be obtained */
+    DBG(num_nvlinks);
     for (link = 0; link < num_nvlinks; ++link) {
+        DBG(link);
         status = UCT_NVML_FUNC(nvmlDeviceGetNvLinkRemotePciInfo(device, link,
                                                                 &pci),
-                               UCS_LOG_LEVEL_DEBUG);
+                                                                UCS_LOG_LEVEL_DEBUG);
+        DBG(pci.bus);
+        DBG(pci.device);
+        DBG(pci.domain);
+        DBG(pci.pciSubSystemId);
+
         if (status != UCS_OK) {
             ucs_debug("could not find remote end info for link %u", link);
             goto err_sd;

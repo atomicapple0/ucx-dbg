@@ -336,7 +336,14 @@ static ucs_status_t uct_cuda_ipc_open_memhandle(uct_cuda_ipc_rkey_t *key,
                                                 CUdeviceptr *mapped_addr)
 {
 
-    ucs_trace("key handle type %u", key->ph.handle_type);
+    printf("key handle type %u\n", key->ph.handle_type);
+
+    DBGX(mapped_addr);
+    DBG(key->ph.handle_type);
+    DBG(UCT_CUDA_IPC_KEY_HANDLE_TYPE_LEGACY);
+    DBG(UCT_CUDA_IPC_KEY_HANDLE_TYPE_VMM);
+    DBG(UCT_CUDA_IPC_KEY_HANDLE_TYPE_MEMPOOL);
+    DBG(HAVE_CUDA_FABRIC);
 
     switch(key->ph.handle_type) {
     case UCT_CUDA_IPC_KEY_HANDLE_TYPE_LEGACY:
@@ -401,6 +408,7 @@ uct_cuda_ipc_get_remote_cache(pid_t pid, uct_cuda_ipc_cache_t **cache)
     khiter_t khiter;
     int khret;
 
+    DBG(key.cu_device);
     UCT_CUDA_IPC_GET_DEVICE(key.cu_device);
 
     ucs_recursive_spin_lock(&uct_cuda_ipc_remote_cache.lock);

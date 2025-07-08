@@ -39,6 +39,8 @@ static uct_cuda_ipc_dev_cache_t *uct_cuda_ipc_create_dev_cache(int dev_num)
     ucs_status_t status;
     int i, num_devices;
 
+    DBGS("lol");
+
     status = UCT_CUDADRV_FUNC_LOG_ERR(cuDeviceGetCount(&num_devices));
     if (UCS_OK != status) {
         ucs_error("cuDeviceGetCount() failed: %s", ucs_status_string(status));
@@ -69,6 +71,8 @@ uct_cuda_ipc_get_dev_cache(uct_cuda_ipc_component_t *component,
     uct_cuda_ipc_dev_cache_t *cache;
     khiter_t iter;
     int ret;
+
+    DBGS("lol");
 
     key.uuid = rkey->uuid;
     key.type = rkey->ph.handle_type;
@@ -121,6 +125,8 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
     int allowed_handle_types;
 #endif
 
+    DBGS("lol");
+
     key = ucs_calloc(1, sizeof(*key), "uct_cuda_ipc_lkey_t");
     if (key == NULL) {
         return UCS_ERR_NO_MEMORY;
@@ -132,6 +138,10 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
     status = UCT_CUDADRV_FUNC_LOG_ERR(cuPointerGetAttribute(&key->ph.buffer_id,
                                       CU_POINTER_ATTRIBUTE_BUFFER_ID,
                                       (CUdeviceptr)addr));
+    DBG(status);
+    DBG(key->ph.buffer_id);
+    DBG(CU_POINTER_ATTRIBUTE_BUFFER_ID);
+    DBGX(addr);
     if (status != UCS_OK) {
         goto err;
     }
@@ -150,15 +160,21 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
     status = UCT_CUDADRV_FUNC_LOG_ERR(
             cuPointerGetAttributes(ucs_static_array_size(attr_data), attr_type,
                 attr_data, (CUdeviceptr)addr));
+    DBG(legacy_capable);
+    DBG(allowed_handle_types);
+    // DBG(mempool);
     if (status != UCS_OK) {
         goto err;
     }
 
-    if (legacy_capable) {
+    if (legacy_capable || 1) {
+        DBGS("go to legacy path");
         goto legacy_path;
     }
-
+    DBG(allowed_handle_types);
+    DBG(CU_MEM_HANDLE_TYPE_FABRIC);
     if (!(allowed_handle_types & CU_MEM_HANDLE_TYPE_FABRIC)) {
+        DBGS("!(allowed_handle_types & CU_MEM_HANDLE_TYPE_FABRIC)");
         goto non_ipc;
     }
 
@@ -172,7 +188,7 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
                         CU_MEM_HANDLE_TYPE_FABRIC, 0));
         if (status != UCS_OK) {
             cuMemRelease(handle);
-            ucs_debug("unable to export handle for VMM ptr: %p", addr);
+            printf("unable to export handle for VMM ptr: %p\n", addr);
             goto non_ipc;
         }
 
@@ -197,7 +213,7 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
                 (void *)&key->ph.handle.fabric_handle, mempool,
                 CU_MEM_HANDLE_TYPE_FABRIC, 0));
     if (status != UCS_OK) {
-        ucs_debug("unable to export handle for mempool ptr: %p", addr);
+        printf("unable to export handle for mempool ptr: %p\n", addr);
         goto non_ipc;
     }
 
@@ -212,6 +228,8 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
     goto common_path;
 
 non_ipc:
+    DBGS("setting key handle type to error");
+    DBG(UCT_CUDA_IPC_KEY_HANDLE_TYPE_ERROR);
     key->ph.handle_type = UCT_CUDA_IPC_KEY_HANDLE_TYPE_ERROR;
     goto common_path;
 #endif
@@ -246,6 +264,8 @@ uct_cuda_ipc_mkey_pack(uct_md_h md, uct_mem_h tl_memh, void *address,
     uct_cuda_ipc_memh_t *memh   = tl_memh;
     uct_cuda_ipc_lkey_t *key;
     ucs_status_t status;
+
+    DBGS("lol");
 
     ucs_list_for_each(key, &memh->list, link) {
         if (((uintptr_t)address >= key->d_bptr) &&
@@ -283,6 +303,8 @@ uct_cuda_ipc_is_peer_accessible(uct_cuda_ipc_component_t *component,
     void *d_mapped;
     uct_cuda_ipc_dev_cache_t *cache;
     uint8_t *accessible;
+
+    DBGS("lol");
 
     status = UCT_CUDADRV_FUNC_LOG_DEBUG(cuCtxGetDevice(&this_device));
     if (UCS_OK != status) {
@@ -344,6 +366,8 @@ UCS_PROFILE_FUNC(ucs_status_t, uct_cuda_ipc_rkey_unpack,
     uct_cuda_ipc_rkey_t *key;
     ucs_status_t status;
 
+    DBGS("lol");
+
     status = uct_cuda_ipc_is_peer_accessible(com, packed);
     if (status != UCS_OK) {
         return status;
@@ -377,6 +401,8 @@ uct_cuda_ipc_mem_reg(uct_md_h md, void *address, size_t length,
     uct_cuda_ipc_memh_t *memh;
     CUdevice cu_device;
 
+    DBGS("lol");
+
     UCT_CUDA_IPC_GET_DEVICE(cu_device);
 
     memh = ucs_malloc(sizeof(*memh), "uct_cuda_ipc_memh_t");
@@ -398,6 +424,7 @@ uct_cuda_ipc_mem_dereg(uct_md_h md, const uct_md_mem_dereg_params_t *params)
 {
     uct_cuda_ipc_memh_t *memh = params->memh;
     uct_cuda_ipc_lkey_t *key, *tmp;
+    DBGS("lol");
 
     UCT_MD_MEM_DEREG_CHECK_PARAMS(params, 0);
 
@@ -409,58 +436,83 @@ uct_cuda_ipc_mem_dereg(uct_md_h md, const uct_md_mem_dereg_params_t *params)
     return UCS_OK;
 }
 
+// #define ANSI_COLOR_MAGENTA "\x1b[34m"
+// #define ANSI_COLOR_RESET "\x1b[0m"
+// #define PERR(x, y, a, b)                                                                 \
+//     printf("%s[%s:%d] %s%s%s%d%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, x, #y, a, b, ANSI_COLOR_RESET)
+// #define DBGS(x) \
+//     printf("%s[%s:%d] %s = %s%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, x, ANSI_COLOR_RESET)
+// #define DBG(x) \
+//     printf("%s[%s:%d] %s = %d%s\n", ANSI_COLOR_MAGENTA, __FILE__, __LINE__, #x, (int)x, ANSI_COLOR_RESET)
+
 static int
 uct_cuda_ipc_md_check_fabric_info(uct_cuda_ipc_md_t *md,
                                   ucs_ternary_auto_value_t mnnvl_enable)
 {
-#if !HAVE_NVML_FABRIC_INFO
-    static int mnnvl_supported = 0;
-#else
+// #if !HAVE_NVML_FABRIC_INFO
+//     static int mnnvl_supported = 0;
+//     DBGS("!HAVE_NVML_FABRIC_INFO");
+// #else
     static int mnnvl_supported = -1;
     nvmlGpuFabricInfo_t fabric_info;
     nvmlDevice_t device;
     ucs_status_t status;
     char buf[64];
+    DBGS("HAVE_NVML_FABRIC_INFO");
 
     if (mnnvl_supported != -1) {
+        DBGS("mnnvl_supported != -1");
         goto out;
     }
 
     if ((mnnvl_enable == UCS_NO) ||
         (UCT_NVML_FUNC(nvmlInit_v2(), UCS_LOG_LEVEL_DIAG) != UCS_OK)) {
         mnnvl_supported = 0;
+        DBGS("mnnvl_supported = 0");
         goto out;
     }
 
     status = UCT_NVML_FUNC_LOG_ERR(nvmlDeviceGetHandleByIndex(0, &device));
     if (status != UCS_OK) {
+        DBGS("out_not_supported");
         goto out_not_supported;
     }
 
     status = UCT_NVML_FUNC_LOG_ERR(
             nvmlDeviceGetGpuFabricInfo(device, &fabric_info));
     if (status != UCS_OK) {
+        DBGS("out_not_supported");
         goto out_not_supported;
     }
 
-    ucs_debug("fabric_info: state=%u status=%u uuid=%s", fabric_info.state,
+    printf("fabric_info: state=%u status=%u uuid=%s\n", fabric_info.state,
               fabric_info.status,
               ucs_str_dump_hex(fabric_info.clusterUuid,
                                NVML_GPU_FABRIC_UUID_LEN, buf, sizeof(buf),
                                SIZE_MAX));
 
+    DBGS("i am here");
+    DBG(fabric_info.state);
+    DBG(fabric_info.status);
+    DBG(NVML_GPU_FABRIC_STATE_COMPLETED);
+    DBG(NVML_SUCCESS);
     if ((fabric_info.state == NVML_GPU_FABRIC_STATE_COMPLETED) &&
-        (fabric_info.status == NVML_SUCCESS)) {
+    (fabric_info.status == NVML_SUCCESS)) {
         mnnvl_supported = 1;
+        DBGS("mnnvl_supported = 1");
         goto out_sd;
     }
+    DBGS("i am here2");
 
 out_not_supported:
     mnnvl_supported = 0;
 out_sd:
     UCT_NVML_FUNC_LOG_ERR(nvmlShutdown());
 out:
-#endif
+// #endif
+    DBG(UCS_YES);
+    DBG(mnnvl_enable);
+    DBG(mnnvl_supported);
     if ((mnnvl_enable == UCS_YES) && !mnnvl_supported) {
         ucs_error("multi-node NVLINK support is requested but not supported");
     }

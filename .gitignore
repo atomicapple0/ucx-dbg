@@ -114,3 +114,4 @@ cmake/*.cmake
 *.gcda
 lcov_data/
 .noinst/
+build/
