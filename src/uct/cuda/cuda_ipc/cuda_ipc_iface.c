@@ -140,9 +140,11 @@ uct_cuda_ipc_iface_is_reachable_v2(const uct_iface_h tl_iface,
     same_uuid    = (ucs_get_system_id() == dev_addr->system_uuid);
 
     if ((getpid() == *(pid_t*)params->iface_addr) && same_uuid) {
+        PERR1("CANT USE CUDA IPC SINCE WE ARE IN THE SAME PROCESS");
         uct_iface_fill_info_str_buf(params, "same process");
         return 0;
     }
+    PERR1("CAN USE CUDA IPC SINCE WE ARE IN DIFFERENT PROCESS");
 
     if (same_uuid ||
         uct_cuda_ipc_iface_mnnvl_supported(md, dev_addr, dev_addr_len)) {

@@ -105,6 +105,32 @@ uct_cuda_ipc_md_query(uct_md_h md, uct_md_attr_v2_t *md_attr)
     return UCS_OK;
 }
 
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BT_BUF_SIZE 100
+
+void print_backtrace() {
+    void *buffer[BT_BUF_SIZE];
+    char **strings;
+    int nptrs;
+
+    nptrs = backtrace(buffer, BT_BUF_SIZE);
+    printf("Backtrace:\n");
+    strings = backtrace_symbols(buffer, nptrs);
+
+    if (strings == NULL) {
+        perror("backtrace_symbols");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < nptrs; i++) {
+        printf("%s\n", strings[i]);
+    }
+    free(strings);
+}
+
 static ucs_status_t
 uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
                          uct_cuda_ipc_lkey_t **key_p)
@@ -151,6 +177,10 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
     /* cuda_ipc can handle VMM, mallocasync, and legacy pinned device so need to
      * pack appropriate handle */
 
+    // I noticed that legacy_capable is 0 if device memory is from cuMemAllocAsync
+    // and 1 if it is from cuMemAlloc in standalone test. However, in ucx_perftest,
+    // it appears to always be 0 even though it uses cuMemAlloc???
+
     attr_type[0] = CU_POINTER_ATTRIBUTE_IS_LEGACY_CUDA_IPC_CAPABLE;
     attr_data[0] = &legacy_capable;
     attr_type[1] = CU_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES;
@@ -164,8 +194,11 @@ uct_cuda_ipc_mem_add_reg(void *addr, uct_cuda_ipc_memh_t *memh,
     if (status != UCS_OK) {
         goto out_pop_ctx;
     }
+    print_backtrace();
 
-    if (legacy_capable) {
+    DBG(legacy_capable);
+    if (legacy_capable || 1) {
+        PERR1("GOTO legacy_path");
         goto legacy_path;
     }
 
@@ -353,6 +386,8 @@ uct_cuda_ipc_is_peer_accessible(uct_cuda_ipc_component_t *component,
 
         *accessible = ((status == UCS_OK) || (status == UCS_ERR_ALREADY_EXISTS))
                       ? UCS_YES : UCS_NO;
+        PERR1("is peer accessible?");
+        DBG(status);
     }
 
     status = (*accessible == UCS_YES) ? UCS_OK : UCS_ERR_UNREACHABLE;
@@ -513,6 +548,12 @@ out:
     } else {
         ucs_debug("multi-node NVLINK support is %s", mnnvl_supported ?
                   "enabled" : "disabled");
+    }
+
+    if (mnnvl_supported) {
+        PERR1("MULT-NODE NVLINK IS SUPPORTED");
+    } else {
+        PERR1("MULT-NODE NVLINK IS NOT SUPPORTED");
     }
 
     return mnnvl_supported;

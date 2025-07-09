@@ -19,11 +19,13 @@
 
 BEGIN_C_DECLS
 
+#define ENABLE_SUPER_VERBOSE_LOGGING 1
+
 /** @file log_def.h */
 
 #define ucs_log_component_is_enabled(_level, _comp_log_config) \
     ucs_unlikely(((_level) <= UCS_MAX_LOG_LEVEL) && \
-                 ((_level) <= (((ucs_log_component_config_t*)(_comp_log_config))->log_level)))
+                 ((_level) <= (((ucs_log_component_config_t*)(_comp_log_config))->log_level)) || ENABLE_SUPER_VERBOSE_LOGGING)
 
 #define ucs_log_is_enabled(_level) \
     ucs_log_component_is_enabled(_level, &ucs_global_opts.log_component)

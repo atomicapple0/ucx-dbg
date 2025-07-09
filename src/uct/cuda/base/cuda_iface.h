@@ -15,6 +15,24 @@
 #include <cuda.h>
 #include <nvml.h>
 
+#include <string.h>
+
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+#define ANSI_COLOR_MAGENTA "\x1b[34m"
+#define ANSI_COLOR_RESET "\x1b[0m"
+#define PERR1(x) \
+    printf("%sPID%d[%s:%d,%s] %s%s\n", ANSI_COLOR_MAGENTA, getpid(), __FILENAME__, __LINE__, __FUNCTION__, x, ANSI_COLOR_RESET)
+#define PERR(x, y, a, b)                                                                 \
+    printf("%sPID%d[%s:%d,%s] %s%s%s%d%s\n", ANSI_COLOR_MAGENTA, getpid(), __FILENAME__, __LINE__, __FUNCTION__, x, #y, a, b, ANSI_COLOR_RESET)
+#define DBGS(x) \
+    printf("%sPID%d[%s:%d,%s] %s = %s%s\n", ANSI_COLOR_MAGENTA, getpid(), __FILENAME__, __LINE__, __FUNCTION__, #x, x, ANSI_COLOR_RESET)
+#define DBG(x) \
+    printf("%sPID%d[%s:%d,%s] %s = %d%s\n", ANSI_COLOR_MAGENTA, getpid(), __FILENAME__, __LINE__, __FUNCTION__, #x, (int)x, ANSI_COLOR_RESET)
+#define DBGX(x) \
+    printf("%sPID%d[%s:%d,%s] %s = %p%s\n", ANSI_COLOR_MAGENTA, getpid(), __FILENAME__, __LINE__, __FUNCTION__, #x, (void*)x, ANSI_COLOR_RESET)
+
+
 
 const char *uct_cuda_base_cu_get_error_string(CUresult result);
 
@@ -33,6 +51,8 @@ const char *uct_cuda_base_cu_get_error_string(CUresult result);
                 _status = UCS_ERR_IO_ERROR; \
             } \
         } while (0); \
+        PERR("UCT_NVML_FUNC: ", _func, "->", (int)_status); \
+        fflush(stdout); \
         _status; \
     })
 
@@ -56,6 +76,8 @@ const char *uct_cuda_base_cu_get_error_string(CUresult result);
             UCT_CUDADRV_LOG(_func, _log_level, _result); \
             _status = UCS_ERR_IO_ERROR; \
         } \
+        PERR("UCT_CUDADRV_FUNC: ", _func, "->", (int)_status); \
+        fflush(stdout); \
         _status; \
     })
 
